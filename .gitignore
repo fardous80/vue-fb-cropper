@@ -1,0 +1,13 @@
+.DS_Store
+node_modules/
+build/
+dist/
+config/
+static/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+todo.txt*
+.postcssrc.js
+.babelrc
+.editorconfig
