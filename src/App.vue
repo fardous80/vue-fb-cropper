@@ -1,6 +1,6 @@
 <template>
 
-    <div id="vue_fb_cropper">
+    <div id="vue_fb_cropper" class="vfc-clear" ref="canvasContainer">
 
 
         <div class="file-selector" :class="{hidden: isStep(0)}" 
@@ -19,86 +19,85 @@
 
 
         <div class="vfc-container" v-if="step==1" :class="{hidden: isStep(1)}">
-            <div class="vfcc-left">
 
-                <div id="crop_canvas" :style="getCanvas">
+            <div id="crop_canvas" :style="getCanvas">
 
-                    <div 
+                <div 
 
-                        class="cropbox" 
+                    class="cropbox" 
 
-                        :style="getCropbox" 
+                    :style="getCropbox" 
+                >
+                    <img 
+                        class="cropbox-image" 
+
+                        :src="image.img.src" 
+
+                        :style="getCropboxImage"
+
+                        @touchstart ="drag('touchStart', $event)" 
+
+                        @touchmove="drag('touchMove', $event)" 
+
+                        @mousedown="drag('dragStart', $event)" 
+
+                        @mousemove="drag('dragMove', $event)" 
+
+                        @mouseup="drag('dragEnd', $event)" 
+
+                        @mouseout="drag('dragCheck', $event)" 
+
+                        ref="cropboxImage"
                     >
-                        <img 
-                            class="cropbox-image" 
+                </div>
 
-                            :src="image.img.src" 
+                <div 
 
-                            :style="getCropboxImage"
+                    class="drag-container" 
 
-                            @touchstart ="drag('touchStart', $event)" 
+                    :style="getDragContainer" 
 
-                            @touchmove="drag('touchMove', $event)" 
+                    ref="dragContainer" 
+                >
 
-                            @mousedown="drag('dragStart', $event)" 
+                    <img
+                        :src="image.img.src" 
 
-                            @mousemove="drag('dragMove', $event)" 
+                        :style="getDragImage"
 
-                            @mouseup="drag('dragEnd', $event)" 
+                        class="drag-image" 
 
-                            @mouseout="drag('dragCheck', $event)" 
+                        @touchstart ="drag('touchStart', $event)" 
 
-                            ref="cropboxImage"
-                        >
-                    </div>
+                        @touchmove="drag('touchMove', $event)" 
 
-                    <div 
+                        @mousedown="drag('dragStart', $event)" 
 
-                        class="drag-container" 
+                        @mousemove="drag('dragMove', $event)" 
 
-                        :style="getDragContainer" 
+                        @mouseup="drag('dragEnd', $event)" 
 
-                        ref="dragContainer" 
+                        @mouseout="drag('dragCheck', $event)" 
+
+                        ref="dragImage"
                     >
 
-                        <img
-                            :src="image.img.src" 
-
-                            :style="getDragImage"
-
-                            class="drag-image" 
-
-                            @touchstart ="drag('touchStart', $event)" 
-
-                            @touchmove="drag('touchMove', $event)" 
-
-                            @mousedown="drag('dragStart', $event)" 
-
-                            @mousemove="drag('dragMove', $event)" 
-
-                            @mouseup="drag('dragEnd', $event)" 
-
-                            @mouseout="drag('dragCheck', $event)" 
-
-                            ref="dragImage"
-                        >
-
-                    </div>
-                </div>
-                 <div class="slider">
-                    <input class="range-slider form-control" type="range" :min="getMinValue()" :max="image.width" v-model.number="curImage.width" @input="resizeImage" step="10" />
                 </div>
             </div>
 
-            <div class="vfcc-right">
-                <div class="preview">
-                    <img :src="image.img.src" :style="getCropboxImage">
-                </div>
+        
+            <div :class="{preview: true, hidden: !show_preview}" :style="getPreview">
+                <img :src="image.img.src" :style="getCropboxImage">
             </div>
-            <div class="vfcc-left">
-               
+
+             <div class="slider">
+                <input class="range-slider form-control" type="range" :min="getMinValue()" :max="image.width" v-model.number="curImage.width" @input="resizeImage" step="10" />
             </div>
-            <div class="vfcc-right"><button class="btn btn-primary" @click="setAvatar">Crop</button></div>
+
+
+            <button class="btn btn-primary" @click="setAvatar">Crop</button>
+
+
         </div>
 
         <div class="row" :class="{hidden: isStep(2)}">
@@ -142,7 +141,11 @@
                     'drag-image'
                 ]),
 
+                canvas: {},
+
                 cropbox: {},
+
+                preview: {width: 200, height: 200, left:0, top: 0},
 
                 curImage: {},
 
@@ -158,7 +161,15 @@
 
                 show_cropper: false,
 
-                upload_error: null
+                show_preview: true,
+
+                upload_error: null,
+
+                container_width: 1000,
+
+                canvas_prop: 1,
+
+                zoom: 1
             }
         },
 
@@ -312,36 +323,72 @@
                     bus.$emit('overlay-loader-off');
 
                 });
+            },
+
+            resizeCanvas(){
+
+                if(this.canvas.width > this.container_width)
+                    this.zoom = this.container_width / this.config.canvas.width;
+                else
+                    this.zoom = 1;
+            },
+
+            addPx(obj){
+                let o = {};
+
+                o.width = (obj.width * this.zoom) + 'px';
+
+                o.height = (obj.height * this.zoom) + 'px';
+
+                if(obj.hasOwnProperty('top')) o.top = (obj.top * this.zoom) + 'px';
+
+                if(obj.hasOwnProperty('left')) o.left = (obj.left * this.zoom) + 'px';
+
+                return o;
             }
-        },
-
-        created(){
-
-            
-            this.cropbox.width = this.config.cropbox.width;
-
-            this.cropbox.height = this.config.cropbox.height;
-
-            this.cropbox.left = (this.config.canvas.width - this.cropbox.width) / 2;
-
-            this.cropbox.top = (this.config.canvas.height - this.cropbox.height) / 2;
-
-            bus.$on('move-image', this.moveImage);
-
         },
 
         computed: {
 
             getCanvas(){
 
-              let obj = this.image.addPx(this.config.canvas);
+                let canvas_with_preview_width = this.canvas.width + 40 + this.preview.width;
 
-              return obj;
+                if(canvas_with_preview_width <= this.container_width){
+                    this.canvas.left = ( this.container_width - canvas_with_preview_width ) / 2;
+
+                    this.show_preview = true;
+
+                    this.preview.left = this.canvas.width + this.canvas.left + 40;
+                }else{
+                    //this.show_preview = false;
+                    let left = ( this.container_width - this.canvas.width ) / 2;
+
+                    left = left > 0 ? left : 0;
+
+                    this.canvas.left = left;
+
+                    this.show_preview = false;
+                }
+                //this.config.canvas.left = 
+
+                let obj = this.addPx(this.canvas);
+
+                return obj;
             },
 
             getCropbox(){
 
-                let obj = this.image.addPx(this.cropbox);
+                let obj = this.addPx(this.cropbox);
+
+                return obj;
+            },
+
+            getPreview(){
+
+                this.preview.top = (this.canvas.height - this.preview.height) / 2;
+
+                let obj = this.addPx(this.preview);
 
                 return obj;
             },
@@ -362,7 +409,7 @@
 
                 //this.generatePreview();
 
-                return this.image.addPx(this.cropboxImage);
+                return this.addPx(this.cropboxImage);
 
             },
 
@@ -379,7 +426,7 @@
 
                 this.dragContainer.top = (this.config.canvas.height - this.dragContainer.height) / 2;
 
-                return this.image.addPx(this.dragContainer);
+                return this.addPx(this.dragContainer);
             },
 
             getDragImage(){
@@ -398,13 +445,53 @@
                 }
 
 
-                return this.image.addPx(this.dragImage);
+                return this.addPx(this.dragImage);
             }
 
             
         },
 
+        created(){
+
+            let self = this;
+
+            this.canvas_prop = this.config.canvas.width / this.config.canvas.height;
+
+            this.canvas.width = this.config.canvas.width;
+
+            this.canvas.height = this.config.canvas.height;
+
+            this.canvas.left = 0;
+
+            
+            this.cropbox.width = this.config.cropbox.width;
+
+            this.cropbox.height = this.config.cropbox.height;
+
+            this.cropbox.left = (this.config.canvas.width - this.cropbox.width) / 2;
+
+            this.cropbox.top = (this.config.canvas.height - this.cropbox.height) / 2;
+
+            this.preview.width = this.cropbox.width;
+
+            this.preview.height = this.cropbox.height;
+
+            bus.$on('move-image', this.moveImage);
+
+            window.addEventListener('resize', function(){
+
+                //console.log(self.$refs.canvasContainer.offsetWidth)
+
+                self.resizeCanvas();
+
+                self.container_width = self.$refs.canvasContainer.offsetWidth;
+            });
+
+        },
+
         mounted(){
+
+            this.container_width = this.$refs.canvasContainer.offsetWidth;
             
         }
     }
@@ -413,29 +500,29 @@
 
 <style>
 
-    .vfc-container{
+    #vue_fb_cropper{
         width: 100%;
         box-sizing: border-box;
     }
 
-    .vfc-container:after{
+    #vue_fb_cropper *{
+        box-sizing: border-box;
+    }
+
+    .vfc-container{
+        width: 100%;
+    }
+
+    .vfc-clear:after{
         content: "";
         display: table;
         clear: both;
     }
 
-    .vfcc-right,
-    .vfcc-left{
-        float: left;
-        box-sizing: border-box;
-    }
-
-    .vfcc-left{
-        width: 70%;
-    }
-
-    .vfcc-right{
-        width: 30%;
+    .vfc-clear:before{
+        content: "";
+        display: table;
+        clear: both;
     }
 
     .hidden{
@@ -449,7 +536,7 @@
 
 
     #crop_canvas{
-        margin: 0 auto;
+        /*margin: 0 auto;*/
         width: 600px;
         height: 400px;
         position: relative;
